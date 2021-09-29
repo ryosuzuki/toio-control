@@ -1,61 +1,113 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title></title>
-  <style>
-    body { margin: 0; }
-  </style>
+  <head>
+    <title>Hello, WebVR! • A-Frame</title>
+    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
-  <script>
-    const socket = io()
-  </script>
-</head>
-<body>
-  <svg width="500" height="500">
-    <rect id="mat" x="50" y="50" width="400" height="400" stroke="gray" fill="#eee" stroke-width="4" />
-    <circle id="target-0" cx="-50" cy="-50" r="10" stroke="red" fill="#e16666" stroke-width="1" />
-    <circle id="target-1" cx="-50" cy="-50" r="10" stroke="red" fill="#e16666" stroke-width="1" />
-    <line id="line-x" x1="250" y1="50" x2="250" y2="450" stroke="red" />
+    <script>
+      const socket = io()
+      let cubes = []
+      let num = 3
 
-    <rect id="cube-0" x="-50" y="-50" width="25" height="25" stroke="gray" fill="white" stroke-width="4" transform=""/>
-    <rect id="cube-1" x="-50" y="-50" width="25" height="25" stroke="gray" fill="white" stroke-width="4" transform=""/>
-  </svg>
+      socket.on('init', (data) => {
+        console.log(data)
+      })
 
-  <script>
-    socket.on('init', (data) => {
-      console.log(data)
-    })
+      socket.on('pos', (data) => {
+        console.log(data)
+        for (let i = 0; i < num; i++) {
+          let x = data.cubes[i].x
+          let y = data.cubes[i].y
+          x = (x - 250) / 200
+          y = (y - 250) / 200
+          let cube = cubes[i]
+          cube.setAttribute('position', `${x} 0 ${y}`)
+        }
+      })
 
-    const mat = document.getElementById('mat')
-    const line = document.getElementById('line-x')
-    mat.addEventListener('click', (e) => {
-      let targetX = e.clientX
-      line.setAttribute('x1', targetX)
-      line.setAttribute('x2', targetX)
-      console.log(targetX)
-      socket.emit('move', { x: targetX })
-    })
+      AFRAME.registerComponent('cube-generate', {
+        init: function() {
+          for (let i = 0; i < num; i++) {
+            let cube = document.createElement('a-box')
+            cube.setAttribute('color', '#777')
+            cube.setAttribute('rotation', '0 0 0')
+            cube.setAttribute('scale', '0.1 0.1 0.1')
+            cube.setAttribute('position', `0 0 0`)
+            this.el.sceneEl.appendChild(cube)
+            cubes.push(cube)
+          }
+        },
+        /*
+        tick: function() {
+          for (let i = 0; i < num; i++) {
+            let cube = cubes[i]
+            cube.setAttribute('position', `0 0 0`)
+          }
+        }
+        */
+      })
 
+      let target = { x:250, y:250 }
+      let prev = { x:250, y:250 }
 
-    socket.on('pos', (data) => {
-      console.log(data)
-      let cubes = data.cubes
-      let x = cubes[0].x
-      let y = cubes[0].y
-      let el = document.getElementById('cube-0')
-      el.setAttribute('x', x)
-      el.setAttribute('y', y)
+      AFRAME.registerComponent('clickable', {
+        init: function() {
+          this.el.addEventListener('click', (event) => {
+            console.log(event)
 
-      x = cubes[1].x
-      y = cubes[1].y
-      el = document.getElementById('cube-1')
-      el.setAttribute('x', x)
-      el.setAttribute('y', y)
+            let plane = document.querySelector('a-plane')
+            let intersection = this.el.sceneEl.components.raycaster.getIntersection(plane)
+            console.log(intersection)
+            let position = intersection.point
+            let sphere = document.createElement('a-sphere')
+            sphere.setAttribute('position', position)
+            let size = 0.04
+            sphere.setAttribute('color', 'red')
+            sphere.setAttribute('scale', `${size} ${size} ${size}`)
+            this.el.sceneEl.appendChild(sphere)
 
-    })
+            let x = position.x * 200 + 250
+            let y = position.z * 200 + 250
+            target = { x: x, y: y }
 
+            let y0 = 100
+            let y1 = 400
+            let x0 = 100
+            let targetPos0 = { x: x, y: y0 }
+            let targetPos1 = { x: x, y: y1 }
+            let targetPos2 = { x: x0, y: y }
 
-  </script>
-</body>
+            let cube0 = cubes[0]
+            let cube1 = cubes[1]
+            let cube2 = cubes[2]
+
+            let time = 2
+            let speedX = (target.x - prev.x) / time
+            let speedY = (target.y - prev.y) / time
+
+            let command = {
+              targetPos0: targetPos0,
+              targetPos1: targetPos1,
+              targetPos2: targetPos2,
+              speedX: speedX,
+              speedY: speedY
+            }
+
+            socket.emit('move2', command)
+
+            socket.emit('move', { x: x, y: y })
+          })
+        }
+      })
+
+    </script>
+  </head>
+  <body>
+    <a-scene cursor="rayOrigin: mouse" cube-generate background="color: #FAFAFA">
+      <a-camera position="0 1.2 3" rotation="-60 0 0"></a-camera>
+      <a-plane clickable width="2" height="2" color="#aaa" position="0 0 0" rotation="-90 0 0"></a-plane>
+    </a-scene>
+  </body>
 </html>
+
