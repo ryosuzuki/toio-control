@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
 
 
 server.listen(3000, () => {
-  console.log('listening 300')
+  console.log('listening 3000')
   toio.io = io
   toio.init()
 })
