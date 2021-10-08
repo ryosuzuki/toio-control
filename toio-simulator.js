@@ -40,8 +40,9 @@ function initDemo() { // eslint-disable-line no-unused-vars, @typescript-eslint/
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async function move(mesh, x, y, z) {
-    mesh.position.set(x - 75, z, y - 75)
+  async function move(point, cubes, x, y, z) {
+    // let position = new THREE.Vector3(x-75, z, y-75)
+
     await sleep(100)
     return
   }
@@ -54,21 +55,74 @@ function initDemo() { // eslint-disable-line no-unused-vars, @typescript-eslint/
     let current = preview.layers[layerIndex]
     let commands = current.commands
 
-    const material = new THREE.MeshNormalMaterial()
-    const geometry = new THREE.SphereGeometry(1, 1, 1)
-    const mesh = new THREE.Mesh(geometry, material)
-    preview.scene.add(mesh)
+    const point = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 1, 1),
+      new THREE.MeshNormalMaterial()
+    )
+    preview.scene.add(point)
+
+    let cubes = []
+    for (let i = 0; i < 3; i++) {
+      let cube = new THREE.Mesh(
+        new THREE.BoxGeometry(8, 4, 8),
+        new THREE.MeshBasicMaterial({ color: 0x777777 }),
+      )
+      preview.scene.add(cube)
+      cubes.push(cube)
+    }
+
+    let bridge = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 2, 100),
+      new THREE.MeshBasicMaterial({ color: 0xbbbbbb }),
+    )
+    preview.scene.add(bridge)
+
+    let pillars = []
+    for (let i = 0; i < 2; i++) {
+      let pillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(5, 5, 1, 30),
+        new THREE.MeshBasicMaterial({ color: 0xaaaaaa }),
+      )
+      preview.scene.add(pillar)
+      pillars.push(pillar)
+    }
+
+    let pen = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5, 0.5, 10, 10),
+      new THREE.MeshNormalMaterial()
+    )
+    preview.scene.add(pen)
 
     console.log(commands)
     for (let command of commands) {
       if (!command.params.x || !command.params.x) continue
-      let x = command.params.x
-      let y = command.params.y
-      let z = layerIndex / 10
-      await move(mesh, x, y, z)
+      let px = command.params.x - 75
+      let py = command.params.y - 75
+      let pz = layerIndex / 10
+      point.position.set(px, pz, py)
+      pen.position.set(px, pz + 5, py)
+
+      let x = px - 4
+      let y = py
+      let z = pz
+      let x0 = -50
+      let x1 =  50
+      cubes[0].position.set(x, 2, x0)
+      cubes[1].position.set(x, 2, x1)
+      cubes[2].position.set(x, z+5, y)
+      bridge.position.set(x, z+2, 0)
+
+      let mz = (z + 10) / 2
+      pillars[0].position.set(x, mz, x0)
+      pillars[0].scale.set(1, z, 1)
+      pillars[1].position.set(x, mz, x1)
+      pillars[1].scale.set(1, z, 1)
+
+      preview.topLayerColor = topLayerColor
+      preview.lastSegmentColor = lastSegmentColor
+      await sleep(100)
     }
   }
-
 
   preview.renderExtrusion = true
   preview.renderTravel = false
