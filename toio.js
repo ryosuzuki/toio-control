@@ -1,5 +1,6 @@
 const { NearScanner } = require('@toio/scanner')
 const ids = require('./ids.json')
+const gcode = require('./gcode.json')
 
 let num = 3
 
@@ -20,6 +21,7 @@ class Toio {
     }
     this.speed = {}
     this.ids = ids
+    this.gcode = gcode
   }
 
   move(id) {
@@ -74,6 +76,8 @@ class Toio {
   async init() {
     this.io.on('connection', (socket) => {
       console.log('connected')
+
+      this.io.sockets.emit('gcode', this.gcode)
 
       socket.on('move', (data) => {
         console.log(data)

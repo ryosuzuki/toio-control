@@ -1,115 +1,93 @@
 <!DOCTYPE html>
-<html>
-
 <head>
-  <title>Simulator</title>
-  <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
-
-  <script>
-    const socket = io()
-    let cubes = []
-    let num = 3
-
-    socket.on('init', (data) => {
-      console.log(data)
-    })
-
-    socket.on('pos', (data) => {
-      console.log(data)
-      for (let i = 0; i < num; i++) {
-        let x = data.cubes[i].x
-        let y = data.cubes[i].y
-        x = (x - 250) / 200
-        y = (y - 250) / 200
-        let cube = cubes[i]
-        cube.setAttribute('position', `${x} 0 ${y}`)
-      }
-    })
-
-    AFRAME.registerComponent('cube-generate', {
-      init: function () {
-        for (let i = 0; i < num; i++) {
-          let cube = document.createElement('a-box')
-          cube.setAttribute('color', '#777')
-          cube.setAttribute('rotation', '0 0 0')
-          cube.setAttribute('scale', '0.1 0.1 0.1')
-          cube.setAttribute('position', `0 0 0`)
-          this.el.sceneEl.appendChild(cube)
-          cubes.push(cube)
-        }
-      },
-      /*
-      tick: function() {
-        for (let i = 0; i < num; i++) {
-          let cube = cubes[i]
-          cube.setAttribute('position', `0 0 0`)
-        }
-      }
-      */
-    })
-
-    let target = { x: 250, y: 250 }
-    let prev = { x: 250, y: 250 }
-
-    AFRAME.registerComponent('clickable', {
-      init: function () {
-        this.el.addEventListener('click', (event) => {
-          console.log(event)
-
-          let plane = document.querySelector('a-plane')
-          let intersection = this.el.sceneEl.components.raycaster.getIntersection(plane)
-          console.log(intersection)
-          let position = intersection.point
-          let sphere = document.createElement('a-sphere')
-          sphere.setAttribute('position', position)
-          let size = 0.04
-          sphere.setAttribute('color', 'red')
-          sphere.setAttribute('scale', `${size} ${size} ${size}`)
-          this.el.sceneEl.appendChild(sphere)
-
-          let x = position.x * 200 + 250
-          let y = position.z * 200 + 250
-          target = { x: x, y: y }
-
-          let y0 = 100
-          let y1 = 400
-          let x0 = 100
-          let targetPos0 = { x: x, y: y0 }
-          let targetPos1 = { x: x, y: y1 }
-          let targetPos2 = { x: x0, y: y }
-
-          let cube0 = cubes[0]
-          let cube1 = cubes[1]
-          let cube2 = cubes[2]
-
-          let time = 2
-          let speedX = (target.x - prev.x) / time
-          let speedY = (target.y - prev.y) / time
-          prev = target
-          let command = {
-            targetPos0: targetPos0,
-            targetPos1: targetPos1,
-            targetPos2: targetPos2,
-            speedX: speedX,
-            speedY: speedY
-          }
-
-          socket.emit('move2', command)
-
-          socket.emit('move', { x: x, y: y })
-        })
-      }
-    })
-
-  </script>
+  <title>GCode Preview - Preview a 3d print from a gcode file</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
-  <a-scene cursor="rayOrigin: mouse" cube-generate background="color: #FAFAFA">
-    <a-camera position="0 1.2 3" rotation="-60 0 0"></a-camera>
-    <a-plane clickable width="2" height="2" color="#aaa" position="0 0 0" rotation="-90 0 0"></a-plane>
-  </a-scene>
-</body>
+  <div class="dnd">☝️ Drop a gcode file here to view it</div>
+  <div class="version-box"><a href="https://www.npmjs.com/package/gcode-preview">
+    <img src="https://img.shields.io/npm/v/gcode-preview.svg?style=flat"/>
+  </a></div>
+  <div class="sidebar">
+    <div>
+      <h1>GCode Preview</h1>
+      <h2 class="description">Preview a 3d print from a gcode file</h2>
+      <br>
+      <section>
+        <div><span id="layer-count"></span> / <span id="file-size"></span></div>
+      </section>
+      <section>
+        <div class="controls">
+          <label>End layer</label>&nbsp;<input
+            type="range"
+            min="1"
+            value="0"
+            id="end-layer"
+          />
+        </div>
+        <div class="controls">
+          <label>Start layer</label>&nbsp;<input
+            type="range"
+            min="1"
+            value="0"
+            id="start-layer"
+          />
+        </div>
+        <div class="controls">
+          <label for="single-layer-mode">Single layer mode</label
+          ><input type="checkbox" id="single-layer-mode" />
+        </div>
+        <div class="controls">
+          <label for="extrusion">Extrusion</label
+          ><input type="checkbox" id="extrusion" />
+        </div>
+        <div class="controls">
+          <label for="travel">Travel</label
+          ><input type="checkbox" id="travel" />
+        </div>
+        <div class="controls">
+          <label for="highlight">Highlight top layer</label
+          ><input type="checkbox" id="highlight" />
+        </div>
+      </section>
+      <section>
+        <div  class="controls">
+          <label for="drawBuildVolume">Draw build volume</label
+          ><input type="checkbox" id="drawBuildVolume" checked />
+        </div>
+        <div class="controls">
+          <label for="buildVolumeX">Build volume (x)</label
+          ><input type="number" id="buildVolumeX" step=10 value=150 />
+        </div>
+        <div  class="controls">
+          <label for="buildVolumeY">Build volume (y)</label
+          ><input type="number" id="buildVolumeY" step=10 value=150 />
+        </div>
+        <div  class="controls">
+          <label for="buildVolumeZ">Build volume (z)</label
+          ><input type="number" id="buildVolumeZ" step=10 value=150 />
+        </div>
 
-</html>
+      </section>
+      <!-- <section class="experimental">
+        <h4>experimental</h4>
+        <div class="controls">
+          <label for="lineWidth">Line width</label>
+          <input id="line-width" type="range" min="0" max="10" step="1" value="2" />
+        </div>
+      </section> -->
+    </div>
+  </div>
+
+  <canvas id="renderer" class="gcode-previewer"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.js"></script>
+  <script src="OrbitControls.js"></script>
+  <script src="gcode-preview.js"></script>
+  <script src="toio-simulator.js"></script>
+  <script>
+    const gcodeDemo = initDemo();
+    loadGCodeFromServer('benchy.gcode');
+
+  </script>
+</body>
